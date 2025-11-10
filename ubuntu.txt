@@ -1,0 +1,905 @@
+Vào máy ảo truy cập để làm bài 
+https://github.com/HoaiSang789/Blockchain
+Tìm code.txt để làm bài 
+
+Cài đặt môi trường và xây dựng hệ thống mạng fabric-samples
+Cập nhật source.list
+1.Truy cập gg: tải source.list ubuntu 22.04
+sudo nano /etc/apt/sources.list
+deb http://archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse
+# deb-src http://archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse
+
+
+deb http://archive.ubuntu.com/ubuntu/ jammy-updates main restricted universe multiverse
+# deb-src http://archive.ubuntu.com/ubuntu/ jammy-updates main restricted universe multiverse
+
+
+deb http://archive.ubuntu.com/ubuntu/ jammy-security main restricted universe multiverse
+# deb-src http://archive.ubuntu.com/ubuntu/ jammy-security main restricted universe multiverse
+
+
+deb http://archive.ubuntu.com/ubuntu/ jammy-backports main restricted universe multiverse
+# deb-src http://archive.ubuntu.com/ubuntu/ jammy-backports main restricted universe multiverse
+
+
+deb http://archive.canonical.com/ubuntu/ jammy partner
+# deb-src http://archive.canonical.com/ubuntu/ jammy partner
+
+
+Uninstall: 
+sudo apt-get purge nodejs &&\ 
+rm -r /etc/apt/sources.list.d/nodesource.list &&\ 
+rm -r /etc/apt/keyrings/nodesource.gpg
+sudo apt-get remove --purge nodejs libnode-dev 
+sudo apt-get autoremove 
+sudo apt-get clean 
+
+2.Install: 
+sudo apt update 
+sudo apt upgrade 
+sudo apt install -y curl 
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+sudo apt-get update 
+sudo apt-get install git -y 
+sudo apt-get install docker-compose -y
+sudo systemctl start docker 
+sudo systemctl enable docker 
+sudo apt install jq -y
+
+3.Tải gói cài đặt Fabric Sample: 2.5.0 1.5.6 
+curl -sSL https://bit.ly/2ysbOFE | bash -s -- 2.5.0 1.5.6 
+4.Thêm quyền người dùng vào group 
+sudo usermod -aG docker $USER
+reboot 
+docker run hello-world
+
+5.Cài đặt gói npm 
+sudo apt-get update 
+sudo npm install npm@6.14.17 -g 
+Tải và cài đặt ngôn ngữ GO 
+Kiểm tra và gỡ các phiên bản cũ nếu đã cài đặt:
+ sudo rm -rf /usr/local/go 
+Truy cập: https://go.dev/dl/ 
+Tải bản 1.23.2 cài đặt của go về máy
+Chép vào thư mục /usr/local/ 
+sudo tar -C /usr/local -xzf go1.23.2.linux-amd64.tar.gz
+go version
+6.Cập nhật biến môi trường vào thư mục go 
+sudo nano ~/.bashrc
+export PATH=$PATH:/home/ubuntu/.local/bin 
+export GOROOT=/usr/local/go 
+export PATH=$GOROOT/bin:$PATH 
+
+export FABRIC_CFG_PATH=$HOME/fabric-samples/config/ 
+export CORE_PEER_LOCALMSPID="Org1MSP" 
+export CORE_PEER_MSPCONFIGPATH=$HOME/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp 
+
+export CORE_PEER_ADDRESS=localhost:7051
+export CORE_PEER_TLS_ROOTCERT_FILE=$HOME/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt 
+export CORE_PEER_TLS_ENABLED=true
+#cập nhật file :
+source ~/.bashrc
+7.Khởi động mạng Fabric và triển khai hợp đồng thông minh 
+Remove tất cả các tài nguyên đã có để tạo các tài nguyên mới (tránh 2 ứng dụng khác nhau cùng chia sẻ cùng một tài nguyên) 
+cd fabric-samples/test-network
+./network.sh down
+
+8.Chạy script network.sh để khởi tạo và chạy mạng Fabric cho ứng dụng:
+./network.sh up createChannel -ca -s couchdb
+
+9.Sau khi mạng đã khởi động, bạn có thể triển khai hợp đồng thông minh ( chaincode ) cho asset-transfer-basic: 
+./network.sh deployCC -ccn basic -ccp /home/ubuntu/fabric-samples/asset-transfer-basic/chaincode-go -ccl go
+
+10.Trường hợp gặp lỗi sau đây cần cài đặt thêm module cần thiết cho dự án 
+cd ~/fabric-samples/asset-transfer-basic/application-gateway-javascript/src
+npm install @grpc/grpc-js 
+npm install @hyperledger/fabric-gateway 
+
+11.Chạy lệnh tạo tài sản mới trên thư mục asset-transfer-basic 
+fit@fit-virtual-machine:~/fabric-samples/asset-transfer-basic/application-gat eway-javascript/src$ node app.js
+
+12.Cài đặt peer để thực hiện thao tác trên network 
+npm install --save-dev --ignore-scripts install-peers 
+#Them peer vao bashrc 
+cd ~/fabric-samples/bin 
+export PATH=$PATH:$PWD
+# Kiểm tra peer: 
+peer version
+
+13.Thêm tài sản: 
+Cần xác định có bao nhiêu tổ chức xác nhận trên hệ thống hiện tại: 
+peer lifecycle chaincode querycommitted --channelID mychannel --name basic 
+
+14.Ở đây cần 2 tổ chức chấp nhận để có thể thêm 1 tài sản mới
+peer chaincode invoke -o 127.0.0.1:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile /home/ubuntu/fabric-samples/test-network/organizations/ordererOrganizations/example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n basic --peerAddresses localhost:7051 --tlsRootCertFiles /home/ubuntu/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses localhost:9051 --tlsRootCertFiles /home/ubuntu/fabric-samples/test-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"Args":["CreateAsset","asset20","green","8","Sang","300"]}'
+
+Kiểm tra tài sản vừa thêm: 
+peer chaincode query -C mychannel -n basic -c '{"Args":["ReadAsset","asset20"]}'
+
+CHAINCODE
+1.Trong thư mục fabric-sample tạo thư mục mychaincode
+mkdir -p ~/fabric-samples/chaincode/mychaincode 
+cd fabric-samples
+2.Tạo file mychaincode.go trong thư mục fabric-samples/chaincode/mychaincode/ với nội dung sau:
+mychaincode.go
+………………………………………………………………………………………………….
+package main
+
+import (
+    "fmt"
+    "github.com/hyperledger/fabric-contract-api-go/contractapi"
+)
+
+// SmartContract định nghĩa cấu trúc chaincode
+type SmartContract struct {
+    contractapi.Contract
+}
+
+// InitLedger khởi tạo ledger với dữ liệu mẫu
+func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
+    sampleData := map[string]string{
+        "asset1": "value1",
+        "asset2": "value2",
+        "asset3": "value3",
+    }
+
+    for key, value := range sampleData {
+        err := ctx.GetStub().PutState(key, []byte(value))
+        if err != nil {
+            return fmt.Errorf("Lỗi khởi tạo ledger: %s", err.Error())
+        }
+    }
+    return nil
+}
+
+// Set thêm một cặp key-value vào ledger
+func (s *SmartContract) Set(ctx contractapi.TransactionContextInterface, key string, value string) error {
+    if key == "" || value == "" {
+        return fmt.Errorf("Key và value không được để trống")
+    }
+    return ctx.GetStub().PutState(key, []byte(value))
+}
+
+// Get lấy giá trị của một key từ ledger
+func (s *SmartContract) Get(ctx contractapi.TransactionContextInterface, key string) (string, error) {
+    value, err := ctx.GetStub().GetState(key)
+    if err != nil {
+        return "", fmt.Errorf("Không thể lấy dữ liệu: %s", err.Error())
+    }
+    if value == nil {
+        return "", fmt.Errorf("Key không tồn tại")
+    }
+    return string(value), nil
+}
+
+// Update cập nhật giá trị mới cho một key có sẵn
+func (s *SmartContract) Update(ctx contractapi.TransactionContextInterface, key string, newValue string) error {
+    exists, err := s.AssetExists(ctx, key)
+    if err != nil {
+        return err
+    }
+    if !exists {
+        return fmt.Errorf("Không thể cập nhật: Key %s không tồn tại", key)
+    }
+    return ctx.GetStub().PutState(key, []byte(newValue))
+}
+
+// Delete xóa một key khỏi ledger
+func (s *SmartContract) Delete(ctx contractapi.TransactionContextInterface, key string) error {
+    if key == "" {
+        return fmt.Errorf("Key không được để trống")
+    }
+    exists, err := s.AssetExists(ctx, key)
+    if err != nil {
+        return err
+    }
+    if !exists {
+        return fmt.Errorf("Không thể xóa: Key %s không tồn tại", key)
+    }
+    return ctx.GetStub().DelState(key)
+}
+
+// AssetExists kiểm tra xem key có tồn tại trong ledger hay không
+func (s *SmartContract) AssetExists(ctx contractapi.TransactionContextInterface, key string) (bool, error) {
+    data, err := ctx.GetStub().GetState(key)
+    if err != nil {
+        return false, fmt.Errorf("Không thể kiểm tra key: %s", err.Error())
+    }
+    return data != nil, nil
+}
+
+// Hàm main để khởi động chaincode
+func main() {
+    chaincode, err := contractapi.NewChaincode(new(SmartContract))
+    if err != nil {
+        fmt.Printf("Lỗi tạo chaincode: %s", err.Error())
+        return
+    }
+
+    if err := chaincode.Start(); err != nil {
+        fmt.Printf("Lỗi khởi động chaincode: %s", err.Error())
+    }
+}
+
+………………………………………………………………………………………………..
+
+3.Di chuyển vào thư mục mychaincode tạo module
+go mod init mychaincode 
+4.Chạy lệnh sau để tải và quản lý các dependencies cho dự án của bạn: 
+go mod tidy
+
+5.Đóng gói chaincode 
+Sau khi đã khởi tạo go.mod và tải tất cả các dependencies, quay lại thư mục testnetwork và thử lại quá trình đóng gói chaincode. 
+Lệnh này sẽ tạo file mychaincode.tar.gz cho chaincode của bạn.
+peer lifecycle chaincode package mychaincode.tar.gz --path ~/fabric-samples/chaincode/mychaincode --lang golang --label mychaincode_1.0
+
+ 6.Tiếp theo, cài đặt chaincode lên peer như trước đây: 
+./network.sh up createChannel -c mychannel -ca 
+peer lifecycle chaincode install mychaincode.tar.gz 
+
+7.Deploy chaincode 
+./network.sh deployCC -ccn mychaincode -ccp ../chaincode/mychaincode -ccl go
+
+Gọi chaincode đã triển khai Lưu ý: chắc chắn rằng dữ liệu được đồng bộ tới tất cả các peer.)
+
+
+//// Lệnh Thêm Dữ Liệu
+peer chaincode invoke \
+  -o 127.0.0.1:7050 \
+  --ordererTLSHostnameOverride orderer.example.com \
+  --tls \
+  --cafile /home/ubuntu/fabric-samples/test-network/organizations/ordererOrganizations/example.com/msp/tlscacerts/tlsca.example.com-cert.pem \
+  -C mychannel \
+  -n mychaincode \
+  --peerAddresses localhost:7051 \
+  --tlsRootCertFiles /home/ubuntu/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt \
+  --peerAddresses localhost:9051 \
+  --tlsRootCertFiles /home/ubuntu/fabric-samples/test-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt \
+  -c '{"Args":["Set","key1","value2"]}'
+
+
+
+
+
+
+
+
+
+
+//// Lệnh kiểm tra dữ liệu đã tạo 
+Lấy giá trị của key, value 
+peer chaincode query -C mychannel -n mychaincode -c '{"Args":["Get","key 1"]}'
+
+///// Lệnh CẬP NHẬT dữ liệu
+peer chaincode invoke \
+  -o 127.0.0.1:7050 \
+  --ordererTLSHostnameOverride orderer.example.com \
+  --tls \
+  --cafile /home/ubuntu/fabric-samples/test-network/organizations/ordererOrganizations/example.com/msp/tlscacerts/tlsca.example.com-cert.pem \
+  -C mychannel \
+  -n mychaincode \
+  --peerAddresses localhost:7051 \
+  --tlsRootCertFiles /home/ubuntu/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt \
+  --peerAddresses localhost:9051 \
+  --tlsRootCertFiles /home/ubuntu/fabric-samples/test-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt \
+  -c '{"Args":["Update","key1","new_value1"]}'
+
+
+
+/// Lệnh XÓA dữ liệu
+peer chaincode invoke \
+  -o 127.0.0.1:7050 \
+  --ordererTLSHostnameOverride orderer.example.com \
+  --tls \
+  --cafile /home/ubuntu/fabric-samples/test-network/organizations/ordererOrganizations/example.com/msp/tlscacerts/tlsca.example.com-cert.pem \
+  -C mychannel \
+  -n mychaincode \
+  --peerAddresses localhost:7051 \
+  --tlsRootCertFiles /home/ubuntu/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt \
+  --peerAddresses localhost:9051 \
+  --tlsRootCertFiles /home/ubuntu/fabric-samples/test-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt \
+  -c '{"Args":["Delete","key1"]}'
+
+
+Sử dụng lệnh peer channel fetch để xem block
+peer channel fetch newest ./newest_block.block -o 127.0.0.1:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile /home/ubuntu/fabric-samples/test-network/organizations/ordererOrganizations/example.com/msp/tlscacerts/tlsca.example.com-cert.pem -c mychannel
+
+Dùng lệnh configtxlator để giải mã block 
+configtxlator proto_decode --input newest_block.block --type common.Block --output newest_block.json 
+
+
+Xem thông tin giao dịch: cat newest_block.json
+
+……………………………………………………………………………………………….
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/hyperledger/fabric-contract-api-go/contractapi"
+)
+
+type SmartContract struct{ contractapi.Contract }
+
+// Mỗi bản ghi là điểm của 1 học phần cho 1 MSSV
+type Student struct {
+	MaHP  string  `json:"ma_hp"`
+	MSSV  string  `json:"mssv"`
+	HoTen string  `json:"ho_ten"`
+	DiemHP float64 `json:"diem_hp"`
+}
+
+// ----------------- Helpers -----------------
+func makeKey(ctx contractapi.TransactionContextInterface, maHP, mssv string) (string, error) {
+	return ctx.GetStub().CreateCompositeKey("grade", []string{maHP, mssv})
+}
+
+// ----------------- CRUD -----------------
+
+// Thêm sinh viên/học phần (1 bản ghi điểm)
+func (s *SmartContract) AddStudent(ctx contractapi.TransactionContextInterface, maHP, mssv, hoTen string, diem float64) error {
+	// Validate input
+	if maHP == "" || mssv == "" || hoTen == "" {
+		return fmt.Errorf("Thiếu tham số: maHP, mssv, hoTen")
+	}
+	if diem < 0 || diem > 10 {
+		return fmt.Errorf("Điểm không hợp lệ (0–10)")
+	}
+
+	key, err := makeKey(ctx, maHP, mssv)
+	if err != nil {
+		return err
+	}
+
+	// Check exists
+	exists, err := s.StudentExists(ctx, maHP, mssv)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return fmt.Errorf("Bản ghi đã tồn tại: (%s, %s)", maHP, mssv)
+	}
+
+	rec := Student{MaHP: maHP, MSSV: mssv, HoTen: hoTen, DiemHP: diem}
+	data, err := json.Marshal(rec)
+	if err != nil {
+		return err
+	}
+
+	if err := ctx.GetStub().PutState(key, data); err != nil {
+		return err
+	}
+
+	// Phát event để client bắt và tự ghi file/ghi log
+	if err := ctx.GetStub().SetEvent("StudentAdded", data); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Lấy bản ghi theo MaHP + MSSV
+func (s *SmartContract) GetStudent(ctx contractapi.TransactionContextInterface, maHP, mssv string) (*Student, error) {
+	key, err := makeKey(ctx, maHP, mssv)
+	if err != nil {
+		return nil, err
+	}
+	data, err := ctx.GetStub().GetState(key)
+	if err != nil {
+		return nil, fmt.Errorf("Lỗi GetState: %w", err)
+	}
+	if data == nil {
+		return nil, fmt.Errorf("Không tìm thấy bản ghi: (%s, %s)", maHP, mssv)
+	}
+	var rec Student
+	if err := json.Unmarshal(data, &rec); err != nil {
+		return nil, err
+	}
+	return &rec, nil
+}
+
+// Cập nhật điểm
+func (s *SmartContract) UpdateStudent(ctx contractapi.TransactionContextInterface, maHP, mssv string, diemMoi float64) error {
+	if diemMoi < 0 || diemMoi > 10 {
+		return fmt.Errorf("Điểm không hợp lệ (0–10)")
+	}
+
+	rec, err := s.GetStudent(ctx, maHP, mssv)
+	if err != nil {
+		return err
+	}
+	rec.DiemHP = diemMoi
+
+	key, err := makeKey(ctx, maHP, mssv)
+	if err != nil {
+		return err
+	}
+	data, err := json.Marshal(rec)
+	if err != nil {
+		return err
+	}
+
+	if err := ctx.GetStub().PutState(key, data); err != nil {
+		return err
+	}
+	if err := ctx.GetStub().SetEvent("StudentUpdated", data); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Xóa bản ghi
+func (s *SmartContract) DeleteStudent(ctx contractapi.TransactionContextInterface, maHP, mssv string) error {
+	key, err := makeKey(ctx, maHP, mssv)
+	if err != nil {
+		return err
+	}
+	exists, err := s.StudentExists(ctx, maHP, mssv)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return fmt.Errorf("Không tồn tại để xóa: (%s, %s)", maHP, mssv)
+	}
+	if err := ctx.GetStub().DelState(key); err != nil {
+		return err
+	}
+	if err := ctx.GetStub().SetEvent("StudentDeleted", []byte(fmt.Sprintf("%s|%s", maHP, mssv))); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Kiểm tra tồn tại
+func (s *SmartContract) StudentExists(ctx contractapi.TransactionContextInterface, maHP, mssv string) (bool, error) {
+	key, err := makeKey(ctx, maHP, mssv)
+	if err != nil {
+		return false, err
+	}
+	data, err := ctx.GetStub().GetState(key)
+	if err != nil {
+		return false, err
+	}
+	return data != nil, nil
+}
+
+// ----------------- Init -----------------
+
+// Khởi tạo dữ liệu mẫu
+func (s *SmartContract) InitLedger(ctx contractapi.TransactionContextInterface) error {
+	return s.AddStudent(ctx, "TH1383", "22022009", "Vo Hoai Sang", 8.5)
+}
+
+// ----------------- main -----------------
+
+func main() {
+	cc, err := contractapi.NewChaincode(new(SmartContract))
+	if err != nil {
+		fmt.Println("Lỗi tạo chaincode:", err)
+		return
+	}
+	if err := cc.Start(); err != nil {
+		fmt.Println("Lỗi khởi động chaincode:", err)
+	}
+}
+………………………………………………………………………………………………..
+# Add thông tin sinh viên
+peer chaincode invoke \
+  -o 127.0.0.1:7050 \
+  --ordererTLSHostnameOverride orderer.example.com \
+  --tls \
+  --cafile /home/ubuntu/fabric-samples/test-network/organizations/ordererOrganizations/example.com/msp/tlscacerts/tlsca.example.com-cert.pem \
+  -C mychannel \
+  -n mychaincode \
+  --peerAddresses localhost:7051 \
+  --tlsRootCertFiles /home/ubuntu/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt \
+  --peerAddresses localhost:9051 \
+  --tlsRootCertFiles /home/ubuntu/fabric-samples/test-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt \
+ -c '{"Args":["AddStudent","TH1383","22022009","Vo Hoai Sang","8.5"]}'
+
+#Update
+peer chaincode invoke \
+  -o 127.0.0.1:7050 \
+  --ordererTLSHostnameOverride orderer.example.com \
+  --tls \
+  --cafile /home/ubuntu/fabric-samples/test-network/organizations/ordererOrganizations/example.com/msp/tlscacerts/tlsca.example.com-cert.pem \
+  -C mychannel \
+  -n mychaincode \
+  --peerAddresses localhost:7051 \
+  --tlsRootCertFiles /home/ubuntu/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt \
+  --peerAddresses localhost:9051 \
+  --tlsRootCertFiles /home/ubuntu/fabric-samples/test-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt \
+  -c '{"Args":["UpdateStudent","TH1383","22022009","9.0"]}'
+
+# Truy xuất thông tin
+peer chaincode query -C mychannel -n mychaincode -c '{"Args":["GetStudent","TH1383","22022009"]}'
+#Delect
+peer chaincode invoke \
+  -o 127.0.0.1:7050 \
+  --ordererTLSHostnameOverride orderer.example.com \
+  --tls \
+  --cafile /home/ubuntu/fabric-samples/test-network/organizations/ordererOrganizations/example.com/msp/tlscacerts/tlsca.example.com-cert.pem \
+  -C mychannel \
+  -n mychaincode \
+  --peerAddresses localhost:7051 \
+  --tlsRootCertFiles /home/ubuntu/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt \
+  --peerAddresses localhost:9051 \
+  --tlsRootCertFiles /home/ubuntu/fabric-samples/test-network/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt \
+   -c '{"Args":["DeleteStudent","TH1383","22022009"]}'
+
+Cài đặt HARDHAT
+1.	Cài đặt Google Chrom
+wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+sudo apt install ./google-chrome-stable_current_amd64.deb
+2.	Cài đặt ganache
+Bước 1. Cài các thư viện cần cho AppImage:
+sudo apt install -y libfuse2 wget
+Bước 2. Vào Ganache release trên GitHub → tải file .AppImage mới nhất, ví dụ 2.7.1:
+wget https://github.com/trufflesuite/ganache-ui/releases/download/v2.7.1/ganache-2.7.1-linux-x86_64.AppImage
+Bước 3: Cấp quyền chạy & khởi động
+chmod +x ganache-2.7.1-linux-x86_64.AppImage
+./ganache-2.7.1-linux-x86_64.AppImage
+sudo mv ganache-2.7.1-linux-x86_64.AppImage /usr/local/bin/ganache
+ganache
+3.	Cài đặt Metamask
+Mở Chrome → vào MetaMask trên Chrome Web Store.
+
+
+
+4.	Cài đặt Hardhat
+Khi cài xong đảm bảo có hardhat.config.js, contracts/Voting.sol, contracts/deployVoting.js
+Xóa Node.js 18 hoặc 20:
+sudo rm /etc/apt/sources.list.d/nodesource.list
+Cài đặt node 22:
+sudo apt install -y curl 
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+
+1.	Cài đặt hệ thống quản lý phiên bản
+sudo apt install git -y
+2.	Tạo nhanh file package.json mặc định cho một dự án Node.j
+npx npm init -y
+npm install -g npm
+3.	Cài Hardhat vào dự án hiện tại, và lưu vào mục phát triển (devDependencies) trong package.json.
+npx npm install --save-dev hardhat
+Tạo dự án Hardhat
+npx hardhat --init
+npm install --save-dev @nomicfoundation/hardhat-toolbox-viem
+sudo nano hardhat.config.js
+require("@nomicfoundation/hardhat-toolbox");
+
+module.exports = {
+  solidity: "0.8.28",
+  networks: {
+    ganache: {
+      url: "http://127.0.0.1:7545", // URL Ganache
+      accounts: [
+        "0x6fad1c814342a4922076730e44df7da53be606b208821a6a49cd8609739901c0"
+      ], // Private key của account Ganache
+    },
+  },
+};
+
+
+
+sudo nano contracts/Voting.sol
+………………………………………………………………………………………………………………………………………………………….
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.28;
+
+contract Voting {
+    string[] public candidatesList;
+    mapping(string => uint) public votesReceived;
+    mapping(address => bool) public hasVoted; // ✅ Lưu trạng thái đã bỏ phiếu
+
+    address public manager;
+
+    constructor(string[] memory candidatesName) {
+        manager = msg.sender;
+        candidatesList = candidatesName;
+    }
+
+    // ✅ Kiểm tra ứng viên hợp lệ
+    function validCandidate(string memory candidate) public view returns (bool) {
+        for (uint i = 0; i < candidatesList.length; i++) {
+            if (
+                keccak256(abi.encodePacked(candidate)) ==
+                keccak256(abi.encodePacked(candidatesList[i]))
+            ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ✅ Bỏ phiếu - chỉ được 1 lần
+    function voteCandidate(string memory candidate) public {
+        require(validCandidate(candidate), "Ung vien khong hop le");
+        require(!hasVoted[msg.sender], "Ban da bo phieu roi!"); // ✅ Chặn vote lại
+
+        votesReceived[candidate]++;   // Tăng phiếu cho ứng viên
+        hasVoted[msg.sender] = true;  // Đánh dấu đã bỏ phiếu
+    }
+
+    // ✅ Lấy danh sách tất cả ứng viên
+    function getAllCandidates() public view returns (string[] memory) {
+        return candidatesList;
+    }
+
+    // ✅ Lấy tổng phiếu của một ứng viên (optional)
+    function getVotes(string memory candidate) public view returns (uint) {
+        return votesReceived[candidate];
+    }
+}
+……………………………………………………………………………………………………………………………………………………………
+sudo nano scripts/deployVoting.js
+async function main() {
+    const Voting = await ethers.getContractFactory("Voting");
+    const voting = await Voting.deploy(["Vo Hoai Sang", "Bui Thanh Kien", "Nguyen Anh Xuan"]);
+    await voting.waitForDeployment();
+
+    console.log("Dia Chi Voting:", voting.target);
+}
+
+main()
+    .then(() => process.exit(0))
+    .catch((error) => {
+        console.log(error);
+        process.exit(1);
+})
+npx hardhat run scripts/deployVoting.js --network ganache
+Hiển thị lên web:
+mkdir web
+cd web
+#tải gói http-server
+sudo npm install -g http-server
+# tạo file index.html
+sudo nano index.html
+
+
+index.html
+………………………………………………………………………………………………………………………………………………………
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Voting DApp</title>
+<style>
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  background-attachment: fixed;
+  color: #fff;
+  text-align: center;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  animation: bgMove 15s ease-in-out infinite alternate;
+}
+@keyframes bgMove {
+  from { background-position: 0 0; }
+  to { background-position: 100% 100%; }
+}
+h1 {
+  color: #00e0ff;
+  margin-top: 20px;
+  text-shadow: 0 0 10px #00e0ff;
+}
+#account {
+  margin-bottom: 5px;
+  color: #aaa;
+}
+#status {
+  margin-bottom: 20px;
+  font-style: italic;
+  color: #0ff;
+  min-height: 20px;
+}
+#candidates {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 25px;
+  margin: 20px auto;
+  padding: 0 10px;
+  max-width: 1000px;
+}
+.card {
+  background: rgba(20, 20, 20, 0.9);
+  border: 1px solid rgba(0,255,255,0.2);
+  border-radius: 14px;
+  padding: 15px;
+  width: 230px;
+  box-shadow: 0 0 15px rgba(0,255,255,0.15);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0 25px rgba(0,255,255,0.4);
+}
+.card img {
+  width: 100%;
+  height: 150px;
+  border-radius: 10px;
+  object-fit: cover;
+  margin-bottom: 10px;
+  border: 1px solid rgba(0,255,255,0.2);
+}
+button {
+  padding: 8px 14px;
+  border: none;
+  background: #00e0ff;
+  color: #000;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+button:hover {
+  transform: scale(1.08);
+  background: #04f3ff;
+}
+canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+}
+</style>
+</head>
+<body>
+<h1>Danh sách ứng viên</h1>
+<div id="account"></div>
+<div id="status"></div>
+<div id="candidates"></div>
+<canvas id="fireworks"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.15.0/dist/ethers.umd.min.js"></script>
+<script>
+(async function() {
+  if (!window.ethereum) return alert("Cần MetaMask hoặc provider tương thích!");
+  await window.ethereum.request({ method: "eth_requestAccounts" });
+
+  const provider = new ethers.BrowserProvider(window.ethereum);
+  const signer = await provider.getSigner();
+  const account = await signer.getAddress();
+  document.getElementById("account").innerText = "👤 Tài khoản: " + account;
+
+  const statusEl = document.getElementById("status");
+
+  const contractAddress = "0x7925976D89260E4E564CeE54A2843DBEB7BA7088";
+  const contractABI = [
+    { "inputs": [{ "internalType": "string[]", "name": "candidatesName", "type": "string[]" }], "stateMutability": "nonpayable", "type": "constructor" },
+    { "inputs": [], "name": "getAllCandidates", "outputs": [{ "internalType": "string[]", "name": "", "type": "string[]" }], "stateMutability": "view", "type": "function" },
+    { "inputs": [{ "internalType": "string", "name": "candidate", "type": "string" }], "name": "voteCandidate", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+    { "inputs": [{ "internalType": "string", "name": "candidate", "type": "string" }], "name": "votesReceived", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }
+  ];
+
+  const contract = new ethers.Contract(contractAddress, contractABI, signer);
+  const candidates = await contract.getAllCandidates();
+  const container = document.getElementById("candidates");
+
+  // 🧑‍💻 Ảnh đại diện riêng
+  const candidateImages = {
+    "Vo Hoai Sang": "image/1.jpg",
+    "Bui Thanh Kien": "image/2.jpg",
+    "Nguyen Anh Xuan": "image/3.jpg"
+  };
+
+  async function renderCandidates() {
+    container.innerHTML = "";
+    for (const name of candidates) {
+      const votes = await contract.votesReceived(name);
+      const card = document.createElement("div");
+      card.className = "card";
+
+      const img = document.createElement("img");
+      img.src = candidateImages[name] || "https://i.imgur.com/8Z7gZME.jpg";
+
+      const title = document.createElement("h3");
+      title.innerText = name;
+
+      const p = document.createElement("p");
+      p.innerText = "Votes: " + votes;
+
+      const btn = document.createElement("button");
+      btn.innerText = "Vote";
+      btn.onclick = async () => {
+        try {
+          const tx = await contract.voteCandidate(name);
+          await tx.wait();
+          statusEl.innerHTML = `✅ Bạn đã bỏ phiếu cho <b>${name}</b> thành công!`;
+          showFireworks(async () => {
+            const newVotes = await contract.votesReceived(name);
+            p.innerText = "Votes: " + newVotes;
+          });
+        } catch (err) {
+          const msg = err.info?.error?.message || err.message;
+          if (msg.includes("revert")) {
+            statusEl.innerHTML = `⚠️ Bạn đã bỏ phiếu rồi!`;
+          } else {
+            alert("Lỗi khi bỏ phiếu: " + msg);
+          }
+        }
+      };
+
+      card.append(img, title, p, btn);
+      container.appendChild(card);
+    }
+  }
+
+  await renderCandidates();
+
+  // 🎆 Pháo hoa công nghệ
+  const canvas = document.getElementById("fireworks");
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  function launchBurst(cx, cy, delay = 0) {
+    return new Promise(resolve => {
+      setTimeout(() => {
+        const particles = [];
+        for (let i = 0; i < 120; i++) {
+          particles.push({
+            x: cx,
+            y: cy,
+            vx: (Math.random() - 0.5) * 12,
+            vy: (Math.random() - 0.5) * 12,
+            size: Math.random() * 3 + 1,
+            alpha: 1,
+            color: `hsl(${Math.random() * 360}, 100%, 60%)`
+          });
+        }
+
+        let frame = 0;
+        const animate = () => {
+          frame++;
+          ctx.fillStyle = "rgba(0,0,0,0.15)";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          particles.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.alpha -= 0.005;
+            p.size *= 0.97;
+            ctx.globalAlpha = p.alpha;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+          });
+          if (frame < 100) requestAnimationFrame(animate);
+          else resolve();
+        };
+        animate();
+      }, delay);
+    });
+  }
+
+  async function showFireworks(onFinish) {
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2 + 100;
+    await launchBurst(cx, cy, 0);
+    await launchBurst(cx - 150, cy - 80, 100);
+    await launchBurst(cx + 150, cy - 100, 100);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (onFinish) onFinish();
+  }
+})();
+</script>
+</body>
+</html>
+………………………………………………………………………………………………………………………………………………..
+http-server -p 8080 --host 0.0.0.0 . 
+
+
+
+
+
+
+
